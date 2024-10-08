@@ -7,27 +7,67 @@ on:
 
 jobs:
   run-python-script:
-    runs-on: ubuntu-latest  # Specifies the runner environment
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
 
     env:
       GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
     steps:
-      - uses: actions/checkout@v2  # Checks-out your repository
+      - uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2  # Sets up Python environment
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.9'  # Specify the Python version
+          python-version: '3.9'
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt  # Install dependencies
+          pip install -r requirements.txt
 
-      - name: Setup Chrome
-        uses: browser-actions/setup-chrome@latest
-        with:
-          chrome-version: stable  # Installs the stable version of Chrome      
+      - name: Install Chrome dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnss3 \
+            libgconf-2-4 \
+            libxss1 \
+            libappindicator1 \
+            libindicator7 \
+            libasound2 \
+            fonts-liberation \
+            libatk-bridge2.0-0 \
+            libgtk-3-0 \
+            xdg-utils \
+            wget \
+            libgbm1 \
+            libu2f-udev \
+            libvulkan1
+
+      - name: Install Google Chrome
+        run: |
+          wget https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_116.0.5845.110-1_amd64.deb
+          sudo apt install -y ./google-chrome-stable_116.0.5845.110-1_amd64.deb
+
+      - name: Install Chromedriver
+        run: |
+          CHROME_VERSION=116
+          CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+          echo "Installing Chromedriver version: $CHROMEDRIVER_VERSION"
+          wget -N https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip
+          unzip -o chromedriver_linux64.zip -d $HOME
+          sudo mv -f $HOME/chromedriver /usr/local/bin/chromedriver
+          sudo chmod +x /usr/local/bin/chromedriver
+
+      - name: Install language fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-arphic-ukai fonts-arphic-uming \
+                                fonts-ipafont-mincho fonts-ipafont-gothic \
+                                fonts-unfonts-core fonts-noto-cjk \
+                                fonts-kacst fonts-kacst-one fonts-arabeyes \
+                                fonts-sil-scheherazade ttf-wqy-zenhei
+          sudo fc-cache -fv
 
       - name: Run Python Script
         run: python app.py
